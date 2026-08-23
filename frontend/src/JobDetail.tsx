@@ -26,7 +26,7 @@ export default function JobDetail({
 
       <button onClick={onPracticeAgain}>Practice This Job Again</button>
 
-      {loading && <p>Loading attempts...</p>}
+      {loading && <p className="muted">Loading attempts...</p>}
 
       {attempts.map((attempt, idx) => {
         const questions = Object.values(attempt.questions);

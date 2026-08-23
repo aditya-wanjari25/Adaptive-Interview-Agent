@@ -5,6 +5,7 @@ interface JobsListProps {
   loading: boolean;
   onSelectJob: (jdHash: string) => void;
   onNewInterview: () => void;
+  onBackHome: () => void;
   onLogout: () => void;
 }
 
@@ -13,22 +14,27 @@ export default function JobsList({
   loading,
   onSelectJob,
   onNewInterview,
+  onBackHome,
   onLogout,
 }: JobsListProps) {
   return (
     <div className="panel">
       <div className="row-between">
-        <h1>Your Practice History</h1>
+        <button className="ghost" onClick={onBackHome}>
+          &larr; Home
+        </button>
         <button className="ghost" onClick={onLogout}>
           Log out
         </button>
       </div>
 
+      <h1>Your Practice History</h1>
+
       <button onClick={onNewInterview}>Start New Interview</button>
 
-      {loading && <p>Loading...</p>}
+      {loading && <p className="muted">Loading...</p>}
       {!loading && jobs.length === 0 && (
-        <p>No practice sessions yet. Start one above.</p>
+        <p className="muted">No practice sessions yet. Start one above.</p>
       )}
 
       <ul className="job-list">

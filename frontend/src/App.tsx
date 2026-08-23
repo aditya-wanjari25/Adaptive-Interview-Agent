@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import VoiceOrb from "./VoiceOrb";
 import Login from "./Login";
+import Home from "./Home";
 import JobsList from "./JobsList";
 import JobDetail from "./JobDetail";
+import Spinner from "./Spinner";
+import LoadingDots from "./LoadingDots";
 import {
   startInterview,
   submitAnswer,
@@ -15,7 +18,7 @@ import {
 } from "./api";
 import "./App.css";
 
-type Phase = "login" | "jobs" | "job-detail" | "setup" | "question" | "menu" | "done";
+type Phase = "login" | "home" | "jobs" | "job-detail" | "setup" | "question" | "menu" | "done";
 type AnswerMode = "choose" | "typing" | "listening" | "reviewSpoken";
 
 const USER_ID_KEY = "interview-coach:user-id";
@@ -34,6 +37,7 @@ function App() {
   const [jobDescription, setJobDescription] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
+  const [questionKey, setQuestionKey] = useState("");
   const [menu, setMenu] = useState<string[]>([]);
   const [result, setResult] = useState<boolean | undefined>();
   const [feedback, setFeedback] = useState("");
@@ -56,7 +60,8 @@ function App() {
     const savedUserId = localStorage.getItem(USER_ID_KEY);
     if (savedUserId) {
       setUserId(savedUserId);
-      setPhase("jobs");
+      setPhase("home");
+      loadJobs(savedUserId);
     }
   }, []);
 
@@ -75,7 +80,7 @@ function App() {
   function handleLogin(username: string) {
     localStorage.setItem(USER_ID_KEY, username);
     setUserId(username);
-    setPhase("jobs");
+    setPhase("home");
     loadJobs(username);
   }
 
@@ -123,6 +128,7 @@ function App() {
       setTypedAnswer("");
       setTranscript("");
       setQuestion(res.question ?? "");
+      setQuestionKey(res.question_key ?? "");
       playQuestion(res.question ?? "");
     } else if (res.status === "awaiting_menu_choice") {
       setPhase("menu");
@@ -146,6 +152,7 @@ function App() {
       setPhase("question");
       setAnswerMode("choose");
       setQuestion(res.question);
+      setQuestionKey(res.question_key);
       await playQuestion(res.question);
     } catch {
       setErrorMsg("Couldn't start the interview. Is the backend running?");
@@ -216,23 +223,55 @@ function App() {
     recognitionRef.current?.stop();
   }
 
+  const isLastQuestion = questionKey === "question5";
+  const finalizing = busy && isLastQuestion;
+
   function goToJobs() {
     setPhase("jobs");
     setSessionId(null);
     if (userId) loadJobs(userId);
   }
 
+  const audioEl = (
+    <audio
+      ref={audioRef}
+      onPlay={() => setSpeaking(true)}
+      onEnded={() => setSpeaking(false)}
+      onPause={() => setSpeaking(false)}
+    />
+  );
+
+  if (phase === "home" && userId) {
+    return (
+      <>
+        {audioEl}
+        <Home
+          userId={userId}
+          practiceCount={jobs.length}
+          onStartNew={() => {
+            setJobDescription("");
+            setPhase("setup");
+          }}
+          onViewHistory={() => setPhase("jobs")}
+          onLogout={handleLogout}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="app">
-      <audio
-        ref={audioRef}
-        onPlay={() => setSpeaking(true)}
-        onEnded={() => setSpeaking(false)}
-        onPause={() => setSpeaking(false)}
-      />
+      {audioEl}
+
+      {phase !== "login" && (
+        <div className="brand">
+          <span className="brand-mark" />
+          Interview Coach
+        </div>
+      )}
 
       {phase !== "login" && phase !== "jobs" && phase !== "job-detail" && (
-        <VoiceOrb speaking={speaking} />
+        <VoiceOrb speaking={speaking || finalizing} />
       )}
 
       {errorMsg && <p className="error">{errorMsg}</p>}
@@ -248,6 +287,7 @@ function App() {
             setJobDescription("");
             setPhase("setup");
           }}
+          onBackHome={() => setPhase("home")}
           onLogout={handleLogout}
         />
       )}
@@ -266,7 +306,7 @@ function App() {
         <form className="panel" onSubmit={handleStartSubmit}>
           <div className="row-between">
             <h1>Start Interview</h1>
-            <button type="button" className="ghost" onClick={() => setPhase("jobs")}>
+            <button type="button" className="ghost" onClick={() => setPhase("home")}>
               Cancel
             </button>
           </div>
@@ -289,61 +329,85 @@ function App() {
 
       {phase === "question" && (
         <div className="panel">
-          <p className="question">{question}</p>
-
-          {answerMode === "choose" && (
-            <div className="choice-row">
-              <button onClick={() => setAnswerMode("typing")} disabled={busy}>
-                Type Answer
-              </button>
-              <button
-                onClick={startListening}
-                disabled={busy || !speechSupported}
-                title={speechSupported ? "" : "Speech recognition isn't supported in this browser"}
-              >
-                Speak Answer
-              </button>
+          {finalizing ? (
+            <div className="loading-panel">
+              <p>
+                Generating your feedback
+                <LoadingDots />
+              </p>
+              <p className="loading-subtext">This takes a few seconds — analyzing all 5 answers.</p>
             </div>
-          )}
+          ) : (
+            <>
+              <p className="question">{question}</p>
 
-          {answerMode === "typing" && (
-            <div className="answer-block">
-              <textarea
-                value={typedAnswer}
-                onChange={(e) => setTypedAnswer(e.target.value)}
-                rows={5}
-                placeholder="Type your answer..."
-                autoFocus
-              />
-              <button onClick={() => sendAnswer(typedAnswer)} disabled={busy || !typedAnswer.trim()}>
-                Submit
-              </button>
-            </div>
-          )}
+              {answerMode === "choose" && (
+                <div className="choice-row">
+                  <button onClick={() => setAnswerMode("typing")} disabled={busy}>
+                    Type Answer
+                  </button>
+                  <button
+                    onClick={startListening}
+                    disabled={busy || !speechSupported}
+                    title={speechSupported ? "" : "Speech recognition isn't supported in this browser"}
+                  >
+                    Speak Answer
+                  </button>
+                </div>
+              )}
 
-          {answerMode === "listening" && (
-            <div className="answer-block">
-              <p className="transcript listening">Listening... {transcript}</p>
-              <button onClick={stopListening}>Done Speaking</button>
-            </div>
-          )}
+              {answerMode === "typing" && (
+                <div className="answer-block">
+                  <textarea
+                    value={typedAnswer}
+                    onChange={(e) => setTypedAnswer(e.target.value)}
+                    rows={5}
+                    placeholder="Type your answer..."
+                    autoFocus
+                  />
+                  <button onClick={() => sendAnswer(typedAnswer)} disabled={busy || !typedAnswer.trim()}>
+                    {busy ? (
+                      <>
+                        <Spinner /> Submitting
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
+                  </button>
+                </div>
+              )}
 
-          {answerMode === "reviewSpoken" && (
-            <div className="answer-block">
-              <textarea
-                value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
-                rows={5}
-              />
-              <div className="choice-row">
-                <button onClick={() => sendAnswer(transcript)} disabled={busy || !transcript.trim()}>
-                  Submit
-                </button>
-                <button onClick={startListening} disabled={busy}>
-                  Re-record
-                </button>
-              </div>
-            </div>
+              {answerMode === "listening" && (
+                <div className="answer-block">
+                  <p className="transcript listening">Listening... {transcript}</p>
+                  <button onClick={stopListening}>Done Speaking</button>
+                </div>
+              )}
+
+              {answerMode === "reviewSpoken" && (
+                <div className="answer-block">
+                  <textarea
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    rows={5}
+                  />
+                  <div className="choice-row">
+                    <button onClick={() => sendAnswer(transcript)} disabled={busy || !transcript.trim()}>
+                      {busy ? (
+                        <>
+                          <Spinner /> Submitting
+                        </>
+                      ) : (
+                        "Submit"
+                      )}
+                    </button>
+                    <button onClick={startListening} disabled={busy}>
+                      Re-record
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
