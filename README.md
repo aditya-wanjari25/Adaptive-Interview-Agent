@@ -1,9 +1,7 @@
 # Interview Coach
 
-An AI-powered interview screening tool. A FastAPI + LangGraph backend generates screening questions from
-a job description, asks them one at a time (spoken aloud via ElevenLabs, answered by speaking or typing),
-then produces a pass/fail decision and constructive feedback. A React frontend drives the whole flow:
-login, a landing page, practice history per job, and the live interview itself.
+An AI-powered interview screening platform that automates candidate evaluation from job descriptions. A FastAPI and LangGraph backend dynamically generates role-specific screening questions, conducts conversational interviews with voice and text input, and evaluates responses to produce a structured pass/fail assessment with actionable feedback. 
+
 
 - **Prompt caching** — messages that get reused across multiple LLM calls within a run (like the job
   description and the compiled answers) are marked cacheable, so the model doesn't have to reprocess them
