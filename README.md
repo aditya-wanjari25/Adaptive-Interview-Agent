@@ -1,4 +1,4 @@
-# Interview Coach
+# Adaptive Interview Agent
 
 An AI-powered interview screening platform that automates candidate evaluation from job descriptions. A FastAPI and LangGraph backend dynamically generates role-specific screening questions, conducts conversational interviews with voice and text input, and evaluates responses to produce a structured pass/fail assessment with actionable feedback. 
 
