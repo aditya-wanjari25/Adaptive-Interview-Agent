@@ -43,7 +43,7 @@ export default function Home({
         <div className="landing-nav-inner">
           <div className="brand">
             <span className="brand-mark" />
-            Interview Coach
+            Adaptive Interview Agent
           </div>
           <nav className="landing-nav-links">
             <button className="ghost" onClick={onViewHistory}>
@@ -91,7 +91,7 @@ export default function Home({
       </main>
 
       <footer className="landing-footer">
-        <p>Interview Coach &mdash; practice smarter, not just harder.</p>
+        <p>Adaptive Interview Agent &mdash; practice smarter, not just harder.</p>
       </footer>
     </div>
   );

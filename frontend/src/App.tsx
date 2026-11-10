@@ -289,7 +289,7 @@ function App() {
       {phase !== "login" && (
         <div className="brand">
           <span className="brand-mark" />
-          Interview Coach
+          Adaptive Interview Agent
         </div>
       )}
 

@@ -1,7 +1,7 @@
 [project]
-name = "interview-coach"
+name = "adaptive-interview-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI interview practice agent with researched, real-world screening questions"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
