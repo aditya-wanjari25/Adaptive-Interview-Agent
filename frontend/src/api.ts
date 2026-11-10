@@ -6,6 +6,7 @@ export type QuestionSource = string;
 export interface QuestionSourceInfo {
   source: QuestionSource;
   url: string;
+  reported_date?: string; // "YYYY-MM" / "YYYY"; absent on older attempts
 }
 
 export interface StartInterviewResponse {
@@ -14,6 +15,7 @@ export interface StartInterviewResponse {
   question_key: string;
   question_source: QuestionSource;
   question_url: string;
+  question_reported_date: string;
   company: string;
 }
 
@@ -23,6 +25,7 @@ export interface AnswerResponse {
   question_key?: string;
   question_source?: QuestionSource;
   question_url?: string;
+  question_reported_date?: string;
   menu?: string[];
   result?: boolean;
   feedback_output?: string;

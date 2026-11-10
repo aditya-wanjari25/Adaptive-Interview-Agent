@@ -46,6 +46,7 @@ function App() {
   const [questionKey, setQuestionKey] = useState("");
   const [questionSource, setQuestionSource] = useState<QuestionSource | undefined>();
   const [questionUrl, setQuestionUrl] = useState("");
+  const [questionReportedDate, setQuestionReportedDate] = useState("");
   const [menu, setMenu] = useState<string[]>([]);
   const [result, setResult] = useState<boolean | undefined>();
   const [feedback, setFeedback] = useState("");
@@ -140,6 +141,7 @@ function App() {
       setQuestionKey(res.question_key ?? "");
       setQuestionSource(res.question_source);
       setQuestionUrl(res.question_url ?? "");
+      setQuestionReportedDate(res.question_reported_date ?? "");
       playQuestion(res.question ?? "");
     } else if (res.status === "awaiting_menu_choice") {
       setPhase("menu");
@@ -169,6 +171,7 @@ function App() {
       setQuestionKey(res.question_key);
       setQuestionSource(res.question_source);
       setQuestionUrl(res.question_url);
+      setQuestionReportedDate(res.question_reported_date);
       await playQuestion(res.question);
     } catch {
       setErrorMsg("Couldn't start the interview. Is the backend running?");
@@ -381,7 +384,11 @@ function App() {
           ) : (
             <>
               <p className="question">{question}</p>
-              <QuestionSourceLabel source={questionSource} url={questionUrl} />
+              <QuestionSourceLabel
+                source={questionSource}
+                url={questionUrl}
+                reportedDate={questionReportedDate}
+              />
 
               {answerMode === "choose" && (
                 <div className="choice-row">

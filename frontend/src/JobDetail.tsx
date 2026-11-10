@@ -51,6 +51,7 @@ export default function JobDetail({
                     <QuestionSourceLabel
                       source={attempt.question_sources[key].source}
                       url={attempt.question_sources[key].url}
+                      reportedDate={attempt.question_sources[key].reported_date}
                     />
                   )}
                   <p className="qa-answer">{attempt.responses[i]}</p>
