@@ -60,6 +60,7 @@ class StartInterviewResponse(BaseModel):
     question_key: str
     question_source: str = "generated"  # site display name (e.g. "Glassdoor") or "generated"
     question_url: str = ""
+    question_reported_date: str = ""  # "YYYY-MM" / "YYYY" when known
     company: str = ""
 
 class AnswerRequest(BaseModel):
@@ -72,6 +73,7 @@ class AnswerResponse(BaseModel):
     question_key: Optional[str] = None
     question_source: Optional[str] = None
     question_url: Optional[str] = None
+    question_reported_date: Optional[str] = None
     menu: Optional[list[str]] = None
     result: Optional[bool] = None
     feedback_output: Optional[str] = None
@@ -186,6 +188,7 @@ async def start_interview(request: Request, body: StartInterviewRequest):
         question_key=payload["question_key"],
         question_source=payload.get("question_source", "generated"),
         question_url=payload.get("question_url", ""),
+        question_reported_date=payload.get("question_reported_date", ""),
         company=result.get("company", ""),
     )
 
@@ -222,6 +225,7 @@ async def submit_answer(request: Request, body: AnswerRequest):
             question_key=payload["question_key"],
             question_source=payload.get("question_source", "generated"),
             question_url=payload.get("question_url", ""),
+            question_reported_date=payload.get("question_reported_date", ""),
         )
 
     return AnswerResponse(

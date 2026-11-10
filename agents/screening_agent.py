@@ -46,7 +46,8 @@ JUDGE_MODEL_KWARGS = dict(
 )
 
 
-RESEARCH_CACHE_NAMESPACE = ("research_cache",)
+# Bump the version when the shape or filtering of research results changes, to ignore stale entries.
+RESEARCH_CACHE_NAMESPACE = ("research_cache_v2",)
 RESEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
@@ -123,7 +124,7 @@ class ScreeningAgent(TypedDict):
     previous_attempt: dict
     company: str                    # optional, user-provided; research identifies it if blank
     research: ResearchResult        # questions candidates reported online (via web search)
-    question_sources: dict          # question key -> {"source": site display name, e.g. "Glassdoor", or "generated", "url": str}
+    question_sources: dict          # question key -> {"reported_date": "YYYY-MM"|"YYYY"|"", "source": site display name, e.g. "Glassdoor", or "generated", "url": str}
 
 
 async def research_questions(state: ScreeningAgent, *, store: BaseStore) -> dict:
@@ -154,12 +155,16 @@ def generate_questions(state: ScreeningAgent) -> dict:
 
     reported = state.get("research", {}).get("questions", [])
     if reported:
-        reported_text = "\n".join(f"[{i}] {q['text']}" for i, q in enumerate(reported))
+        reported_text = "\n".join(
+            f"[{i}] {q['text']}" + (f" (reported {q['reported_date']})" if q.get("reported_date") else "")
+            for i, q in enumerate(reported)
+        )
         instructions = (
             "Below are questions candidates report being asked for this company/role. Use as many of them as "
             "are relevant to the job description and answerable verbally in a screening call, up to 5. Keep "
             "their meaning (light rewording for clarity is fine) and set reported_index to the number in "
-            "brackets. Generate the remaining questions from the job description with reported_index -1. "
+            "brackets. When relevance is similar, prefer more recently reported questions. Generate the remaining "
+            "questions from the job description with reported_index -1. "
             "Order the questions as a natural screening conversation.\n\n"
             f"Reported questions:\n{reported_text}"
         )
@@ -192,9 +197,13 @@ def generate_questions(state: ScreeningAgent) -> dict:
         # Guard against out-of-range or reused indexes so a source is never mis-attributed.
         if 0 <= idx < len(reported) and idx not in used_indexes:
             used_indexes.add(idx)
-            question_sources[key] = {"source": reported[idx]["source"], "url": reported[idx]["url"]}
+            question_sources[key] = {
+                "source": reported[idx]["source"],
+                "url": reported[idx]["url"],
+                "reported_date": reported[idx].get("reported_date", ""),
+            }
         else:
-            question_sources[key] = {"source": "generated", "url": ""}
+            question_sources[key] = {"source": "generated", "url": "", "reported_date": ""}
 
     return {"questions": questions, "question_sources": question_sources}
 
@@ -216,6 +225,7 @@ def ask_questions(state: ScreeningAgent) -> dict:
         "question_key": current_key,
         "question_source": source["source"],
         "question_url": source["url"],
+        "question_reported_date": source.get("reported_date", ""),
     })
 
     responses = responses + [answer]
