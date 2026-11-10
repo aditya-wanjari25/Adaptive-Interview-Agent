@@ -47,6 +47,7 @@ app.add_middleware(
 class StartInterviewRequest(BaseModel):
     job_description: str
     user_id: str
+    company: Optional[str] = None
 
 
 class SpeakRequest(BaseModel):
@@ -57,6 +58,9 @@ class StartInterviewResponse(BaseModel):
     session_id: str
     question: str
     question_key: str
+    question_source: str = "generated"  # site display name (e.g. "Glassdoor") or "generated"
+    question_url: str = ""
+    company: str = ""
 
 class AnswerRequest(BaseModel):
     session_id: str
@@ -66,6 +70,8 @@ class AnswerResponse(BaseModel):
     status: str  # "in_progress", "awaiting_menu_choice", or "completed"
     question: Optional[str] = None
     question_key: Optional[str] = None
+    question_source: Optional[str] = None
+    question_url: Optional[str] = None
     menu: Optional[list[str]] = None
     result: Optional[bool] = None
     feedback_output: Optional[str] = None
@@ -77,11 +83,14 @@ class JobSummary(BaseModel):
     attempt_count: int
     last_attempt_at: float
     last_result: Optional[bool] = None
+    company: str = ""
 
 
 class Attempt(BaseModel):
     job_description: str
     questions: dict
+    question_sources: dict = {}  # absent on attempts saved before research existed
+    company: str = ""
     responses: list
     feedback_output: str
     result: bool
@@ -111,6 +120,7 @@ async def list_jobs(user_id: str, request: Request):
                 attempt_count=len(items),
                 last_attempt_at=latest.value["timestamp"],
                 last_result=latest.value.get("result"),
+                company=latest.value.get("company", ""),
             )
         )
 
@@ -157,7 +167,11 @@ async def start_interview(request: Request, body: StartInterviewRequest):
     config = {"configurable": {"thread_id": session_id}}
 
     result = await request.app.state.compiled_graph.ainvoke(
-        {"job_description": body.job_description, "user_id": body.user_id},
+        {
+            "job_description": body.job_description,
+            "user_id": body.user_id,
+            "company": (body.company or "").strip(),
+        },
         config=config,
     )
 
@@ -170,6 +184,9 @@ async def start_interview(request: Request, body: StartInterviewRequest):
         session_id=session_id,
         question=payload["question"],
         question_key=payload["question_key"],
+        question_source=payload.get("question_source", "generated"),
+        question_url=payload.get("question_url", ""),
+        company=result.get("company", ""),
     )
 
 
@@ -203,6 +220,8 @@ async def submit_answer(request: Request, body: AnswerRequest):
             status="in_progress",
             question=payload["question"],
             question_key=payload["question_key"],
+            question_source=payload.get("question_source", "generated"),
+            question_url=payload.get("question_url", ""),
         )
 
     return AnswerResponse(

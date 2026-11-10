@@ -1,4 +1,5 @@
 import type { Attempt } from "./api";
+import QuestionSourceLabel from "./QuestionSourceLabel";
 
 interface JobDetailProps {
   jobDescription: string;
@@ -29,7 +30,7 @@ export default function JobDetail({
       {loading && <p className="muted">Loading attempts...</p>}
 
       {attempts.map((attempt, idx) => {
-        const questions = Object.values(attempt.questions);
+        const questions = Object.entries(attempt.questions);
         return (
           <details key={attempt.timestamp} className="attempt" open={idx === 0}>
             <summary>
@@ -43,9 +44,15 @@ export default function JobDetail({
               <pre className="feedback">{attempt.feedback_output}</pre>
 
               <h3>Responses</h3>
-              {questions.map((question, i) => (
-                <div key={i} className="qa-pair">
+              {questions.map(([key, question], i) => (
+                <div key={key} className="qa-pair">
                   <p className="qa-question">{question}</p>
+                  {attempt.question_sources?.[key] && (
+                    <QuestionSourceLabel
+                      source={attempt.question_sources[key].source}
+                      url={attempt.question_sources[key].url}
+                    />
+                  )}
                   <p className="qa-answer">{attempt.responses[i]}</p>
                 </div>
               ))}

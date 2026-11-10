@@ -6,6 +6,7 @@ import JobsList from "./JobsList";
 import JobDetail from "./JobDetail";
 import Spinner from "./Spinner";
 import LoadingDots from "./LoadingDots";
+import QuestionSourceLabel from "./QuestionSourceLabel";
 import {
   startInterview,
   submitAnswer,
@@ -15,6 +16,7 @@ import {
   type AnswerResponse,
   type JobSummary,
   type Attempt,
+  type QuestionSource,
 } from "./api";
 import "./App.css";
 
@@ -31,13 +33,19 @@ function App() {
   const [jobsLoading, setJobsLoading] = useState(false);
 
   const [selectedJobDescription, setSelectedJobDescription] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState("");
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [attemptsLoading, setAttemptsLoading] = useState(false);
 
   const [jobDescription, setJobDescription] = useState("");
+  const [company, setCompany] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [startingCompany, setStartingCompany] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [questionKey, setQuestionKey] = useState("");
+  const [questionSource, setQuestionSource] = useState<QuestionSource | undefined>();
+  const [questionUrl, setQuestionUrl] = useState("");
   const [menu, setMenu] = useState<string[]>([]);
   const [result, setResult] = useState<boolean | undefined>();
   const [feedback, setFeedback] = useState("");
@@ -95,6 +103,7 @@ function App() {
     const job = jobs.find((j) => j.jd_hash === jdHash);
     if (!job || !userId) return;
     setSelectedJobDescription(job.job_description);
+    setSelectedCompany(job.company ?? "");
     setPhase("job-detail");
     setAttemptsLoading(true);
     setErrorMsg(null);
@@ -129,6 +138,8 @@ function App() {
       setTranscript("");
       setQuestion(res.question ?? "");
       setQuestionKey(res.question_key ?? "");
+      setQuestionSource(res.question_source);
+      setQuestionUrl(res.question_url ?? "");
       playQuestion(res.question ?? "");
     } else if (res.status === "awaiting_menu_choice") {
       setPhase("menu");
@@ -142,28 +153,40 @@ function App() {
     }
   }
 
-  async function beginInterview(jd: string) {
+  async function beginInterview(jd: string, companyName: string) {
     if (!userId) return;
     setBusy(true);
+    setStarting(true);
+    setStartingCompany(companyName.trim());
     setErrorMsg(null);
     try {
-      const res = await startInterview(jd, userId);
+      const res = await startInterview(jd, userId, companyName);
+      setStarting(false);
       setSessionId(res.session_id);
       setPhase("question");
       setAnswerMode("choose");
       setQuestion(res.question);
       setQuestionKey(res.question_key);
+      setQuestionSource(res.question_source);
+      setQuestionUrl(res.question_url);
       await playQuestion(res.question);
     } catch {
       setErrorMsg("Couldn't start the interview. Is the backend running?");
     } finally {
+      setStarting(false);
       setBusy(false);
     }
   }
 
   function handleStartSubmit(e: React.FormEvent) {
     e.preventDefault();
-    beginInterview(jobDescription);
+    beginInterview(jobDescription, company);
+  }
+
+  function openSetup() {
+    setJobDescription("");
+    setCompany("");
+    setPhase("setup");
   }
 
   async function sendAnswer(answer: string) {
@@ -248,10 +271,7 @@ function App() {
         <Home
           userId={userId}
           practiceCount={jobs.length}
-          onStartNew={() => {
-            setJobDescription("");
-            setPhase("setup");
-          }}
+          onStartNew={openSetup}
           onViewHistory={() => setPhase("jobs")}
           onLogout={handleLogout}
         />
@@ -283,26 +303,38 @@ function App() {
           jobs={jobs}
           loading={jobsLoading}
           onSelectJob={openJob}
-          onNewInterview={() => {
-            setJobDescription("");
-            setPhase("setup");
-          }}
+          onNewInterview={openSetup}
           onBackHome={() => setPhase("home")}
           onLogout={handleLogout}
         />
       )}
 
-      {phase === "job-detail" && (
+      {starting && (
+        <div className="panel">
+          <div className="loading-panel">
+            <p>
+              Researching {startingCompany || "this role's"} interviews
+              <LoadingDots />
+            </p>
+            <p className="loading-subtext">
+              Searching the web for questions candidates reported, like Glassdoor and Blind reviews. This can take
+              up to a minute.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {phase === "job-detail" && !starting && (
         <JobDetail
           jobDescription={selectedJobDescription}
           attempts={attempts}
           loading={attemptsLoading}
           onBack={() => setPhase("jobs")}
-          onPracticeAgain={() => beginInterview(selectedJobDescription)}
+          onPracticeAgain={() => beginInterview(selectedJobDescription, selectedCompany)}
         />
       )}
 
-      {phase === "setup" && (
+      {phase === "setup" && !starting && (
         <form className="panel" onSubmit={handleStartSubmit}>
           <div className="row-between">
             <h1>Start Interview</h1>
@@ -310,6 +342,15 @@ function App() {
               Cancel
             </button>
           </div>
+          <label>
+            Company <span className="optional">(optional)</span>
+            <input
+              type="text"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="e.g. Stripe — used to find real reported interview questions"
+            />
+          </label>
           <label>
             Job description
             <textarea
@@ -340,6 +381,7 @@ function App() {
           ) : (
             <>
               <p className="question">{question}</p>
+              <QuestionSourceLabel source={questionSource} url={questionUrl} />
 
               {answerMode === "choose" && (
                 <div className="choice-row">
@@ -432,12 +474,7 @@ function App() {
           <pre className="feedback">{feedback}</pre>
           <div className="choice-row">
             <button onClick={goToJobs}>Back to Jobs</button>
-            <button
-              onClick={() => {
-                setJobDescription("");
-                setPhase("setup");
-              }}
-            >
+            <button onClick={openSetup}>
               Start New Interview
             </button>
           </div>
