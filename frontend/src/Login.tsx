@@ -14,7 +14,7 @@ export default function Login({ onLogin }: LoginProps) {
 
   return (
     <form className="panel" onSubmit={handleSubmit}>
-      <h1>Interview Coach</h1>
+      <h1>Adaptive Interview Agent</h1>
       <label>
         Username
         <input
