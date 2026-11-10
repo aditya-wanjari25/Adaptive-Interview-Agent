@@ -1,15 +1,28 @@
 const API_BASE = "http://localhost:8000";
 
+// Display name of the site a question was reported on (e.g. "Glassdoor"), or "generated".
+export type QuestionSource = string;
+
+export interface QuestionSourceInfo {
+  source: QuestionSource;
+  url: string;
+}
+
 export interface StartInterviewResponse {
   session_id: string;
   question: string;
   question_key: string;
+  question_source: QuestionSource;
+  question_url: string;
+  company: string;
 }
 
 export interface AnswerResponse {
   status: "in_progress" | "awaiting_menu_choice" | "completed";
   question?: string;
   question_key?: string;
+  question_source?: QuestionSource;
+  question_url?: string;
   menu?: string[];
   result?: boolean;
   feedback_output?: string;
@@ -17,12 +30,17 @@ export interface AnswerResponse {
 
 export async function startInterview(
   jobDescription: string,
-  userId: string
+  userId: string,
+  company?: string
 ): Promise<StartInterviewResponse> {
   const res = await fetch(`${API_BASE}/interview/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ job_description: jobDescription, user_id: userId }),
+    body: JSON.stringify({
+      job_description: jobDescription,
+      user_id: userId,
+      company: company?.trim() || null,
+    }),
   });
   if (!res.ok) throw new Error("Failed to start interview");
   return res.json();
@@ -58,11 +76,14 @@ export interface JobSummary {
   attempt_count: number;
   last_attempt_at: number;
   last_result: boolean | null;
+  company: string;
 }
 
 export interface Attempt {
   job_description: string;
   questions: Record<string, string>;
+  question_sources: Record<string, QuestionSourceInfo>;
+  company: string;
   responses: string[];
   feedback_output: string;
   result: boolean;
